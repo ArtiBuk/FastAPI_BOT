@@ -5,6 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import Column, String, Integer, Enum, Boolean, ForeignKey, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSON, JSONB
+from sqlalchemy.orm import relationship
 
 from database.enums import City, ObjectCategory
 

@@ -1,16 +1,18 @@
 import uuid
+from datetime import datetime
 from typing import List
-
 from pydantic import BaseModel, EmailStr
-
 from src.schemas.object import ObjectOut
 
 
-class RightOut(BaseModel):
-    id: uuid.UUID
-    name: str
-    description: str | None
-    object: List[ObjectOut.Short] | None
+class RightOut:
+    class Base(BaseModel):
+        id: uuid.UUID
+        name: str
+        description: str | None
+
+    class WithObject(Base):
+        object: List[ObjectOut.Short] | None
 
 
 class UserIn:
@@ -51,7 +53,21 @@ class UserOut(BaseModel):
         right: uuid.UUID | str
 
     class WithRight(Base):
-        access: RightOut
+        access: RightOut.WithObject | None
 
     class Config:
         orm_mode = True
+
+
+class UserOutList(BaseModel):
+    users: List[UserOut.WithRight]
+
+
+class TimeControlOut(BaseModel):
+    date_start: datetime | None
+    date_end: datetime | None
+    working_hours: int | None
+
+
+class TimeControlOutList(BaseModel):
+    reports: List[TimeControlOut] | None
