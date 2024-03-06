@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.session import get_db
 from database.models import User, RightUser, Object, ReportProfit
-from src.depends.authentication import auth_tg, get_current_user
+from src.depends.authentication import auth_tg, get_current_user, get_current_user_request
 from src.schemas.object import ObjectOut, ObjectList, ObjectIn, ReportProfitList, ReportProfitOut
 
-router = APIRouter(dependencies=[Depends(auth_tg)])
+router = APIRouter()
 
 
 @router.get(
@@ -18,7 +18,7 @@ router = APIRouter(dependencies=[Depends(auth_tg)])
     response_model=ObjectList
 )
 async def get_all_objects(
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user_request),
         db_connect: AsyncSession = Depends(get_db)
 ):
     if current_user.right:
@@ -59,7 +59,7 @@ async def get_all_objects(
 )
 async def create_object(
         object_in: ObjectIn,
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user_request),
         db_connect: AsyncSession = Depends(get_db)
 ):
     try:
@@ -93,7 +93,7 @@ async def create_object(
 )
 async def get_object(
         object_id: int,
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user_request),
         db_connect: AsyncSession = Depends(get_db),
 ):
     if not current_user.is_admin:
@@ -121,7 +121,7 @@ async def get_object(
 )
 async def soft_removal(
         object_id: int | None,
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user_request),
         db_connect: AsyncSession = Depends(get_db),
 ):
     if current_user.is_admin:
@@ -142,7 +142,7 @@ async def soft_removal(
 )
 async def get_report_profit(
         object_id: int,
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user_request),
         db_connect: AsyncSession = Depends(get_db),
         date_start: datetime | None = None,
         date_end: datetime | None = None,

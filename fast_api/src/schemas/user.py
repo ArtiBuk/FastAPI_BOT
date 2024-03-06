@@ -50,7 +50,7 @@ class UserOut(BaseModel):
         tg_id: int
         email: EmailStr
         is_admin: bool
-        right: uuid.UUID | str
+        right: uuid.UUID | None
 
     class WithRight(Base):
         access: RightOut.WithObject | None
