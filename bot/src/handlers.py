@@ -1,21 +1,22 @@
-import re
-from datetime import datetime
+import os
 
 from aiogram import Dispatcher, types
-from aiogram.client import bot
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.utils.markdown import hbold
 
-from src.button import get_main_button, get_time_control_button, get_update_user_for_admin_button
-from src.schemas import UserCreateApi
+from src.button import get_main_button, get_time_control_button, get_update_user_for_admin_button, \
+    get_report_to_object_button, get_object_button, format_to_object_report, city_object_select, category_object_select
+from src.schemas import UserCreateApi, ObjectCreateApi
 from src.servises import get_id_from_message, parse_update_by_admin_message, parse_update_message, format_user_get_me, \
-    parse_dates_from_message, parse_date_from_response
+    parse_dates_from_message, parse_date_from_response, extract_id_from_string, format_report_message, \
+    create_excel_file, parse_name_message
 from src.servises_api import get_user_api, create_user_api, get_all_users_api, update_user_api, \
-    delete_user_api, time_control_api, get_report_time_control_api
+    delete_user_api, time_control_api, get_report_time_control_api, get_all_objects_api, get_report_profit_api, \
+    delete_object_api, create_object_api
 from src.states import MainMenuStates, RegistrationState, TimeControl, UpdateUserDataForAdmin, UpdateUserData, \
-    DeleteUserForAdmin, SelectUserData
+    DeleteUserForAdmin, SelectUserData, ObjectReport, ObjectCreateAdmin
 from email_validator import validate_email, EmailNotValidError
 
 dp = Dispatcher()
@@ -26,6 +27,15 @@ USER = {}
 async def command_start_handler(message: Message, state: FSMContext) -> None:
     tg_id = message.from_user.id
     if tg_id in USER:
+        response = await get_user_api(tg_id, False, None)
+        if response == "Ваш аккаунт удален администратором":
+            markup = types.ReplyKeyboardRemove()
+            await message.answer(
+                f"Привет, {hbold(message.from_user.full_name)}\n"
+                f"{response} \n"
+                f"Обратитесь к администратору (@artibuk)",
+                reply_markup=markup
+            )
         bt = get_main_button(True, tg_id)
         await state.set_state(MainMenuStates.waiting_action)
         await message.answer(
@@ -51,6 +61,14 @@ async def command_start_handler(message: Message, state: FSMContext) -> None:
                 f"Привет, {hbold(message.from_user.full_name)}"
                 f"Вы еще не авторизированны. Пройдите регистрацию \n"
                 f"Введите ваш username",
+                reply_markup=markup
+            )
+        elif response == "Ваш аккаунт удален администратором":
+            markup = types.ReplyKeyboardRemove()
+            await message.answer(
+                f"Привет, {hbold(message.from_user.full_name)}\n"
+                f"{response} \n"
+                f"Обратитесь к администратору (@artibuk)",
                 reply_markup=markup
             )
         else:
@@ -129,9 +147,9 @@ async def action_selection_handler(message: Message, state: FSMContext) -> None:
             reply_markup=bt
         )
     elif message.text == "Отчеты объектов":
-        bt = get_main_button(True, user_id)
-        await state.set_state(MainMenuStates.waiting_action)
-        await message.reply("Пока недоступно", reply_markup=bt)
+        bt = get_report_to_object_button(user_id)
+        await state.set_state(ObjectReport.waiting_action)
+        await message.reply("Этот раздел для просмотра отчетов об объектах. Выберете действие", reply_markup=bt)
     elif message.text == "Информация о пользователях":
         users = await get_all_users_api(user_id, False)
         if isinstance(users, list):
@@ -175,6 +193,148 @@ async def action_selection_handler(message: Message, state: FSMContext) -> None:
         bt = get_main_button(True, user_id)
         await state.set_state(MainMenuStates.waiting_action)
         await message.reply("Чет вы ошиблись. Введите корректную команду.", reply_markup=bt)
+
+
+@dp.message(ObjectReport.waiting_action)
+async def report_action_selection_handler(message: Message, state: FSMContext) -> None:
+    user_id = message.from_user.id
+    if message.text == "Просмотр отчет по выбранному объекту за период":
+        objects = await get_all_objects_api(user_id)
+        if isinstance(objects, list):
+            bt = get_object_button(objects)
+            await state.set_state(ObjectReport.waiting_select_object)
+            await message.reply(
+                f"Выберете объект:",
+                reply_markup=bt
+            )
+    elif message.text == "Создать объект":
+        await state.set_state(ObjectCreateAdmin.waiting_name_object)
+        markup = types.ReplyKeyboardRemove()
+        await message.reply("Введите данные для создания объекта через Enter:\n"
+                            "Наименование объекта\n"
+                            "Описание (если не хотите указывать, то поставьте 0)\n", reply_markup=markup)
+    elif message.text == "Удалить объект":
+        objects = await get_all_objects_api(user_id)
+        if isinstance(objects, list):
+            bt = get_object_button(objects)
+            await state.set_state(ObjectReport.waiting_select_object_for_delete)
+            await message.reply(
+                f"Выберете объект который хотите удалить:",
+                reply_markup=bt
+            )
+
+
+@dp.message(ObjectCreateAdmin.waiting_name_object)
+async def select_city_handler(message: Message, state: FSMContext) -> None:
+    name_obj, description_obj = parse_name_message(message.text)
+    await state.update_data(name_obj=name_obj, description_obj=description_obj)
+    bt = city_object_select()
+    await state.set_state(ObjectCreateAdmin.waiting_city_object)
+    await message.reply(
+        "А теперь выберите город:",
+        reply_markup=bt
+    )
+
+
+@dp.message(ObjectCreateAdmin.waiting_city_object)
+async def category_city_handler(message: Message, state: FSMContext) -> None:
+    await state.update_data(city_obj=message.text)
+    bt = category_object_select()
+    await state.set_state(ObjectCreateAdmin.waiting_category_object)
+    await message.reply(
+        "Осталась только категория:",
+        reply_markup=bt
+    )
+
+
+@dp.message(ObjectCreateAdmin.waiting_category_object)
+async def finish_create_handler(message: Message, state: FSMContext) -> None:
+    user_id = message.from_user.id
+    bt = category_object_select()
+    state_data = await state.get_data()
+    obj_create = ObjectCreateApi(
+        name=state_data["name_obj"],
+        description=state_data["description_obj"],
+        city=state_data["city_obj"],
+        category=message.text
+    )
+    await state.clear()
+    response = await create_object_api(user_id, obj_create)
+    if isinstance(response, dict):
+        await state.set_state(MainMenuStates.waiting_action)
+        await message.reply(
+            f"Cозданный объект: \n"
+            f"Наименование: {response['name']}\n"
+            f"Описание: {response['description'] if response['description'] else 'не указано'}\n"
+            f"Категория: {response['category']}\n",
+            reply_markup=bt
+        )
+
+
+@dp.message(ObjectReport.waiting_select_object_for_delete)
+async def finish_delete_for_object_handler(message: Message, state: FSMContext) -> None:
+    obj_id = extract_id_from_string(message.text)
+    user_id = message.from_user.id
+    await state.clear()
+    if isinstance(obj_id, int):
+        response = await delete_object_api(user_id, obj_id)
+        bt = get_main_button(True, user_id)
+        await state.set_state(MainMenuStates.waiting_action)
+        await message.reply(
+            response,
+            reply_markup=bt
+        )
+
+
+@dp.message(ObjectReport.waiting_select_object)
+async def period_for_selection_report_handler(message: Message, state: FSMContext) -> None:
+    obj_id = extract_id_from_string(message.text)
+    if isinstance(obj_id, int):
+        await state.update_data(obj_id=obj_id)
+        await state.set_state(ObjectReport.waiting_date_report)
+        markup = types.ReplyKeyboardRemove()
+        await message.reply("Введите период в формате:\n"
+                            "c dd/mm/yyyy\n"
+                            "по dd/mm/yyyy\n"
+                            "('c' и 'по' писать не нужно)", reply_markup=markup)
+
+
+@dp.message(ObjectReport.waiting_date_report)
+async def format_selection_handler(message: Message, state: FSMContext) -> None:
+    date_start, date_end = parse_dates_from_message(message.text)
+    await state.update_data(date_start=date_start, date_end=date_end)
+    await state.set_state(ObjectReport.waiting_report_format)
+    bt = format_to_object_report()
+    await message.reply("Выберете формат отчет", reply_markup=bt)
+
+
+@dp.message(ObjectReport.waiting_report_format)
+async def finish_report_handler(message: Message, state: FSMContext) -> None:
+    user_id = message.from_user.id
+    state_data = await state.get_data()
+    date_start = state_data.get("date_start")
+    date_end = state_data.get("date_end")
+    obj_id = state_data.get("obj_id")
+    response = await get_report_profit_api(user_id, date_start, date_end, obj_id)
+    await state.clear()
+    if isinstance(response, dict):
+        if message.text == "Сообщением":
+            answer = format_report_message(response)
+            bt = get_main_button(True, user_id)
+            await state.set_state(MainMenuStates.waiting_action)
+            await message.reply(
+                f"{answer}",
+                reply_markup=bt
+            )
+        elif message.text == "Excel":
+            filename = create_excel_file(response)
+            bt = get_main_button(True, user_id)
+            await state.set_state(MainMenuStates.waiting_action)
+            await message.reply_document(
+                FSInputFile(f"/Users/artibuk/Documents/Python/FastAPI_BOT/bot/{filename}", filename="report.xlsx"),
+                reply_markup=bt
+            )
+            os.remove(filename)
 
 
 @dp.message(UpdateUserDataForAdmin.waiting_user)

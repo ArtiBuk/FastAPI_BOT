@@ -54,10 +54,53 @@ def get_time_control_button(tg_id: int) -> types.ReplyKeyboardMarkup:
     return button
 
 
+def get_report_to_object_button(tg_id: int) -> types.ReplyKeyboardMarkup:
+    from src.handlers import USER
+    if USER.get(tg_id):
+        bt = [
+            [types.KeyboardButton(text="Просмотр отчет по выбранному объекту за период")],
+            [types.KeyboardButton(text="Создать объект")],
+            [types.KeyboardButton(text="Удалить объект")],
+        ]
+    else:
+        bt = [
+            [types.KeyboardButton(text="Просмотр отчет по выбранной точке за период")],
+            [types.KeyboardButton(text="Посмотреть итоговый отчет за месяц")],
+        ]
+    button = types.ReplyKeyboardMarkup(
+        keyboard=bt,
+        resize_keyboard=True,
+        input_field_placeholder="Выберете действие"
+    )
+    return button
+
+
+def format_to_object_report() -> types.ReplyKeyboardMarkup:
+    bt = [
+        [types.KeyboardButton(text="Сообщением")],
+        [types.KeyboardButton(text="Excel")],
+    ]
+    button = types.ReplyKeyboardMarkup(
+        keyboard=bt,
+        resize_keyboard=True,
+        input_field_placeholder="Выберете формат отчета"
+    )
+    return button
+
+
 def get_update_user_for_admin_button(tg_id: int, users: list) -> types.ReplyKeyboardMarkup:
     if check_is_admin(tg_id):
-        buttons = [[types.KeyboardButton(text=f"{index + 1}. {user}") for index, user in enumerate(users)],
-                   [types.KeyboardButton(text="Отмена")]]
+        MAX_BUTTONS_IN_ROW = 3
+        buttons = []
+        row = []
+
+        for index, user in enumerate(users, start=1):
+            row.append(types.KeyboardButton(text=f"{index}. {user}"))
+            if len(row) == MAX_BUTTONS_IN_ROW or index == len(users):
+                buttons.append(row)
+                row = []
+
+        buttons.append([types.KeyboardButton(text="Отмена")])
 
         keyboard = types.ReplyKeyboardMarkup(
             keyboard=buttons,
@@ -67,3 +110,54 @@ def get_update_user_for_admin_button(tg_id: int, users: list) -> types.ReplyKeyb
         return keyboard
     else:
         raise ValueError("Пользователь не является администратором")
+
+
+def get_object_button(object_list: list) -> types.ReplyKeyboardMarkup:
+    MAX_BUTTONS_IN_ROW = 2
+    buttons = []
+    row = []
+
+    for index, obj in enumerate(object_list, start=1):
+        row.append(types.KeyboardButton(text=f"{index}. {obj}"))
+        if len(row) == MAX_BUTTONS_IN_ROW or index == len(object_list):
+            buttons.append(row)
+            row = []
+
+    buttons.append([types.KeyboardButton(text="Отмена")])
+
+    keyboard = types.ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        input_field_placeholder="Выберите объект или нажмите 'Отмена'"
+    )
+    return keyboard
+
+
+def city_object_select() -> types.ReplyKeyboardMarkup:
+    bt = [
+        [types.KeyboardButton(text="Норильск")],
+        [types.KeyboardButton(text="Талнах")],
+        [types.KeyboardButton(text="Кайркан")],
+        [types.KeyboardButton(text="Кайркан")],
+    ]
+    button = types.ReplyKeyboardMarkup(
+        keyboard=bt,
+        resize_keyboard=True,
+        input_field_placeholder="Выберете город"
+    )
+    return button
+
+
+def category_object_select() -> types.ReplyKeyboardMarkup:
+    bt = [
+        [types.KeyboardButton(text="Рестаран")],
+        [types.KeyboardButton(text="Fast food")],
+        [types.KeyboardButton(text="Хостел")],
+        [types.KeyboardButton(text="Десткий центр")],
+    ]
+    button = types.ReplyKeyboardMarkup(
+        keyboard=bt,
+        resize_keyboard=True,
+        input_field_placeholder="Выберете категорию"
+    )
+    return button

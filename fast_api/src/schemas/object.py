@@ -19,12 +19,12 @@ class ObjectOut:
         category: ObjectCategory
 
     class Full(Short):
-        id: int
         created_at: datetime
         updated_at: datetime
         deleted_at: datetime | None
 
     class WithCountReport(Short):
+        id: int
         count_report: int | None
 
     class Config:

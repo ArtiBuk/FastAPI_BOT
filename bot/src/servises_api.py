@@ -3,7 +3,7 @@ from datetime import datetime
 
 from httpx import AsyncClient, Response
 
-from src.schemas import UserCreateApi, UpdateForAdminApi, UpdateUserApi
+from src.schemas import UserCreateApi, UpdateForAdminApi, UpdateUserApi, ObjectCreateApi
 from src.settings import settings
 
 client = AsyncClient()
@@ -29,6 +29,8 @@ async def get_user_api(tg_id: int, is_admin: bool, tg_id_by_search: int | None) 
         return response.json()
     elif response.status_code == 401:
         return "Unauthorized"
+    elif response.status_code == 400:
+        return "Ваш аккаунт удален администратором"
     else:
         return "Что-то пошло не так"
 
@@ -128,7 +130,8 @@ async def time_control_api(tg_id: int, is_started: bool) -> str | None:
         return None
 
 
-async def get_report_time_control_api(tg_id: int, date_start: datetime, date_end: datetime, tg_id_by_search: int | None) -> dict | None:
+async def get_report_time_control_api(tg_id: int, date_start: datetime, date_end: datetime,
+                                      tg_id_by_search: int | None) -> dict | None:
     headers = {
         "tg_id": f"{str(tg_id)}",
     }
@@ -155,3 +158,83 @@ async def get_report_time_control_api(tg_id: int, date_start: datetime, date_end
         return response.json()
     else:
         return None
+
+
+async def get_all_objects_api(tg_id: int) -> list | str:
+    headers = {
+        "tg_id": f"{str(tg_id)}",
+    }
+    response = await client.get(
+        url=f'{settings.base_root}/object/all',
+        headers=headers,
+    )
+    if response.status_code == 200:
+        data = response.json()
+        print(data)
+        obj_list = []
+        for obj in data['objects']:
+            obj_bt = f":{obj['name']} ({obj['city']}) - ID: {obj['id']}; Кол-во отчетов: {obj['count_report'] if obj['count_report'] else '0'}"
+            obj_list.append(obj_bt)
+        return obj_list
+    else:
+        return "Что-то пошло не так"
+
+
+async def get_report_profit_api(tg_id: int, date_start: datetime, date_end: datetime,
+                                object_id: int | None) -> dict | None:
+    headers = {
+        "tg_id": f"{str(tg_id)}",
+    }
+    params = {
+        "date_start": date_start,
+        "date_end": date_end,
+        "object_id": object_id
+    }
+    response = await client.get(
+        url=f'{settings.base_root}/object/{object_id}/report_profit',
+        headers=headers,
+        params=params
+    )
+    data = response.json()
+    print(data)
+    if response.status_code == 200:
+        return data
+    elif response.status_code == 400:
+        return data
+    else:
+        return None
+
+
+async def delete_object_api(tg_id: int, object_id: int | None) -> str:
+    headers = {
+        "tg_id": f"{str(tg_id)}",
+    }
+    params = {
+        "object_id": object_id
+    }
+    response = await client.delete(
+        url=f'{settings.base_root}/object/soft_removal',
+        headers=headers,
+        params=params
+    )
+    print(response.text)
+    return response.text
+
+
+async def create_object_api(tg_id: int, object_in: ObjectCreateApi) -> dict | str:
+    headers = {
+        "tg_id": f"{str(tg_id)}",
+    }
+    response = await client.post(
+        url=f'{settings.base_root}/object/create',
+        headers=headers,
+        json=object_in.dict()
+    )
+    print(response.json())
+    if response.status_code == 200:
+        return response.json()
+    elif response.status_code == 403:
+        return "Вы не являетесь админом"
+    else:
+        return response.text
+

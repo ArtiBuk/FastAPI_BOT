@@ -65,8 +65,11 @@ async def get_me(
         .filter(User.tg_id == tg_id)
     )
     user: User = (await db_connect.execute(query_user)).scalar()
+
     if not user:
         raise HTTPException(404, detail="Пользователь не найден")
+    if user.deleted_at:
+        raise HTTPException(400, detail="Пользователь удален")
     if user.right:
         query_access_id = select(RightUser).filter(RightUser.id == user.right)
         right = (await db_connect.execute(query_access_id)).scalar()

@@ -36,3 +36,13 @@ class TimeControl(StatesGroup):
 
 class ObjectReport(StatesGroup):
     waiting_action = State()
+    waiting_select_object = State()
+    waiting_select_object_for_delete = State()
+    waiting_date_report = State()
+    waiting_report_format = State()
+
+
+class ObjectCreateAdmin(StatesGroup):
+    waiting_name_object = State()
+    waiting_city_object = State()
+    waiting_category_object = State()

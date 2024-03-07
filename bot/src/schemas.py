@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -26,3 +28,10 @@ class UpdateUserApi(BaseModel):
     last_name: str | None
     middle_name: str | None
     email: EmailStr | None
+
+
+class ObjectCreateApi(BaseModel):
+    name: str
+    description: str | None
+    city: str
+    category: str

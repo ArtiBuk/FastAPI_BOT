@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func, asc, desc
+from sqlalchemy import select, func, asc, desc, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.session import get_db
@@ -29,7 +29,7 @@ async def get_all_objects(
         ).as_scalar()
 
         query = (
-            select(Object)
+            select(Object).where(Object.deleted_at == None)
             .where(Object.id.in_(subquery))
         )
         objects = (await db_connect.execute(query)).scalars().all()
@@ -41,6 +41,7 @@ async def get_all_objects(
             )
             count = (await db_connect.execute(query_count_report)).scalar()
             obj_data = ObjectOut.WithCountReport(
+                id=obj.id,
                 name=obj.name,
                 description=obj.description,
                 city=obj.city,
@@ -146,7 +147,7 @@ async def get_report_profit(
         db_connect: AsyncSession = Depends(get_db),
         date_start: datetime | None = None,
         date_end: datetime | None = None,
-        sort_by_date: bool | None = None,
+        sort_by_date: bool | None = True,
 ):
     if not current_user.is_admin:
         user_right: RightUser = (
@@ -159,7 +160,7 @@ async def get_report_profit(
         .filter(ReportProfit.object == object_data.id)
     )
     if date_start and date_end:
-        query_count_report = query_count_report.filter((ReportProfit.created_at >= date_start, ReportProfit.created_at <= date_end))
+        query_count_report = query_count_report.filter(and_(ReportProfit.created_at >= date_start, ReportProfit.created_at <= date_end))
     if sort_by_date is not None:
         if sort_by_date:
             query_count_report = query_count_report.order_by(asc(ReportProfit.created_at))
