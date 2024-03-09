@@ -1,5 +1,4 @@
-from enum import Enum, unique
-from functools import lru_cache
+from enum import Enum
 
 
 class City(Enum):
@@ -14,4 +13,3 @@ class ObjectCategory(Enum):
     FAST_FOOD = "Fast food"
     HOSTEL = "Хостел"
     CHILD_CENTER = "Десткий центр"
-

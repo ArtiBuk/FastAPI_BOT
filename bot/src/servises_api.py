@@ -1,7 +1,6 @@
-import json
 from datetime import datetime
 
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 
 from src.schemas import UserCreateApi, UpdateForAdminApi, UpdateUserApi, ObjectCreateApi
 from src.settings import settings
@@ -237,4 +236,3 @@ async def create_object_api(tg_id: int, object_in: ObjectCreateApi) -> dict | st
         return "Вы не являетесь админом"
     else:
         return response.text
-

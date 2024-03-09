@@ -1,10 +1,10 @@
-import io
 import os
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+
 from openpyxl import Workbook
-from openpyxl.styles import Alignment
+
 from src.schemas import UpdateForAdminApi, UpdateUserApi
 
 
@@ -97,7 +97,7 @@ def parse_dates_from_message(message_text: str) -> tuple[datetime, datetime]:
             if idx == 0:
                 date_start = date_object
             elif idx == 1:
-                date_end = date_object
+                date_end = date_object + timedelta(days=1)
         except ValueError:
             print(f"Ошибка при парсинге даты: {date_string}")
     if date_start and date_end:
@@ -110,12 +110,21 @@ def parse_dates_from_message(message_text: str) -> tuple[datetime, datetime]:
 def parse_date_from_response(reports: list[dict]):
     message = ""
     for idx, report in enumerate(reports, start=1):
-        message += f"Отчет #{idx}:\n"
-        message += f"Дата начала: {report['date_start']}\n"
-        message += f"Дата окончания: {report['date_end']}\n"
-        message += f"Отработанные часы: {int(report['working_hours']) // 60}\n"
-        message += f"Отработанные минуты: {(int(report['working_hours']) % 60):02d}\n"
-        message += "-------------------------------------\n\n"
+        data_start = datetime.strptime(report['date_start'].strip(), '%Y-%m-%dT%H:%M:%S.%f')
+        if report['date_end'] and report['working_hours']:
+            data_start = datetime.strptime(report['date_start'].strip(), '%Y-%m-%dT%H:%M:%S.%f')
+            data_end = datetime.strptime(report['date_end'].strip(), '%Y-%m-%dT%H:%M:%S.%f')
+            message += f"Отчет #{idx}: \n"
+            message += f"Дата отчета: {data_start.strftime('%d.%M.%Y')}\n"
+            message += f"Время начала: {data_start.strftime('%H:%M:%S')}\n"
+            message += f"Время окончания: {data_end.strftime('%H:%M:%S')}\n"
+            message += f"Отработанные часы: {report['working_hours'] // 60}\n"
+            message += f"Отработанные минуты: {(report['working_hours'] % 60):02d}\n"
+            message += "-------------------------------------\n\n"
+        else:
+            message += f"Отчет #{idx}:\n"
+            message += f"Дата начала: {data_start.strftime('%d:%M:%Y')}\n"
+            message += "Нет времени окончания рабочего дня"
 
     return message
 
@@ -193,3 +202,8 @@ def parse_name_message(message_text: str) -> tuple[str, str | None]:
     description = lines[1].strip() if lines[1].strip() != '0' else None
 
     return name, description
+
+
+def clear_user_dict():
+    from src.handlers import USER
+    USER.clear()

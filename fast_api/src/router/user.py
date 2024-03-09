@@ -1,13 +1,12 @@
-import uuid
 from datetime import datetime, date
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, asc, desc, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.requests import Request
 
 from core.session import get_db
 from database.models import User, Object, RightUser, ReportTimeControl
-from src.depends.authentication import get_current_user, auth_tg, get_current_user_request
+from src.depends.authentication import get_current_user_request
 from src.schemas.object import ObjectOut
 from src.schemas.user import UserOut, UserIn, RightOut, UserOutList, TimeControlOutList, TimeControlOut
 
@@ -37,7 +36,9 @@ async def create_user(
             tg_id=user_add.tg_id,
             email=user_add.email,
             is_admin=user_add.is_admin,
-            right=user_add.right if user_add.right else "Вам еще не выданы права администратором"
+            right=user_add.right if user_add.right else "Вам еще не выданы права администратором",
+            time_work_start=user_add.time_work_start if user_add.time_work_start else None,
+            time_work_end=user_add.time_work_end if user_add.time_work_end else None
         )
     except Exception as e:
         await db_connect.rollback()
@@ -123,7 +124,7 @@ async def update_user_me(
         tg_id=current_user.tg_id,
         email=current_user.email,
         is_admin=current_user.is_admin,
-        right=current_user.right if current_user.right else None
+        right=current_user.right if current_user.right else None,
     )
 
 
@@ -165,7 +166,7 @@ async def update_by_admin(
             tg_id=user.tg_id,
             email=user.email,
             is_admin=user.is_admin,
-            right=user.right if user.right else None
+            right=user.right if user.right else None,
         )
     else:
         raise HTTPException(403, detail="Нет прав на редактирование пользователя")
@@ -202,7 +203,7 @@ async def get_all(
         current_user: User = Depends(get_current_user_request),
 ):
     if current_user.is_admin:
-        query = select(User)
+        query = select(User).filter(User.deleted_at == None)
         users: [User] = (await db_connect.execute(query)).scalars().all()
 
         user_out = []
@@ -263,7 +264,7 @@ async def start_work(
         if is_started:
             existing_record = (await db_connect.execute(select(ReportTimeControl).filter(
                 (ReportTimeControl.user_id == current_user.id) & (
-                            func.date(ReportTimeControl.data_start) == date.today())))).scalar()
+                        func.date(ReportTimeControl.data_start) == date.today())))).scalar()
             if existing_record:
                 raise HTTPException(400, detail="Отметка о начале работы уже была сделана сегодня")
             time_control = ReportTimeControl(
@@ -276,8 +277,8 @@ async def start_work(
         else:
             existing_record = (await db_connect.execute(select(ReportTimeControl).filter(
                 (ReportTimeControl.user_id == current_user.id) & (
-                            func.date(ReportTimeControl.data_start) == date.today()) & (
-                            func.date(ReportTimeControl.data_end) == date.today())))).scalar()
+                        func.date(ReportTimeControl.data_start) == date.today()) & (
+                        func.date(ReportTimeControl.data_end) == date.today())))).scalar()
             if existing_record:
                 raise HTTPException(400, detail="Отметка о конце работы уже была сделана сегодня")
             time_control: ReportTimeControl = (await db_connect.execute(

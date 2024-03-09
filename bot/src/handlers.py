@@ -1,23 +1,26 @@
+import asyncio
 import os
 
+import pytz
 from aiogram import Dispatcher, types
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, FSInputFile
 from aiogram.utils.markdown import hbold
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from email_validator import validate_email, EmailNotValidError
 
 from src.button import get_main_button, get_time_control_button, get_update_user_for_admin_button, \
     get_report_to_object_button, get_object_button, format_to_object_report, city_object_select, category_object_select
 from src.schemas import UserCreateApi, ObjectCreateApi
 from src.servises import get_id_from_message, parse_update_by_admin_message, parse_update_message, format_user_get_me, \
     parse_dates_from_message, parse_date_from_response, extract_id_from_string, format_report_message, \
-    create_excel_file, parse_name_message
+    create_excel_file, parse_name_message, clear_user_dict
 from src.servises_api import get_user_api, create_user_api, get_all_users_api, update_user_api, \
     delete_user_api, time_control_api, get_report_time_control_api, get_all_objects_api, get_report_profit_api, \
     delete_object_api, create_object_api
 from src.states import MainMenuStates, RegistrationState, TimeControl, UpdateUserDataForAdmin, UpdateUserData, \
     DeleteUserForAdmin, SelectUserData, ObjectReport, ObjectCreateAdmin
-from email_validator import validate_email, EmailNotValidError
 
 dp = Dispatcher()
 USER = {}
@@ -477,7 +480,6 @@ async def timecontrol_action_selection_handler(message: Message, state: FSMConte
 
 @dp.message(TimeControl.waiting_select_user)
 async def user_for_report_selection_handler(message: Message, state: FSMContext) -> None:
-    user_id = message.from_user.id
     tg_id = get_id_from_message(message.text)
     if isinstance(tg_id, int):
         await state.update_data(tg_id=tg_id)
@@ -508,3 +510,24 @@ async def period_selection_handler(message: Message, state: FSMContext) -> None:
             f"{answer}",
             reply_markup=bt
         )
+
+
+@dp.message()
+async def echo_handler(message: types.Message, state: FSMContext) -> None:
+    await state.clear()
+    bt = get_main_button(True, message.from_user.id)
+    await state.set_state(MainMenuStates.waiting_action)
+    try:
+        await message.send_copy(
+            chat_id=message.chat.id,
+            reply_markup=bt
+        )
+    except TypeError:
+        await message.answer(f"Хорошая попытка", reply_markup=bt)
+
+
+async def clear_auth_users() -> None:
+    await asyncio.sleep(1)
+    scheduler = AsyncIOScheduler(timezone=pytz.timezone("Asia/Krasnoyarsk"))
+    scheduler.add_job(clear_user_dict, "cron", hour=0, minute=0)
+    scheduler.start()

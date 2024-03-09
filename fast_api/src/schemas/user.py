@@ -1,7 +1,9 @@
 import uuid
 from datetime import datetime
 from typing import List
+
 from pydantic import BaseModel, EmailStr
+
 from src.schemas.object import ObjectOut
 
 

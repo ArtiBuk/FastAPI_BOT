@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, asc, desc, and_
@@ -7,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.session import get_db
 from database.models import User, RightUser, Object, ReportProfit
-from src.depends.authentication import auth_tg, get_current_user, get_current_user_request
+from src.depends.authentication import get_current_user_request
 from src.schemas.object import ObjectOut, ObjectList, ObjectIn, ReportProfitList, ReportProfitOut
 
 router = APIRouter()
@@ -160,7 +159,8 @@ async def get_report_profit(
         .filter(ReportProfit.object == object_data.id)
     )
     if date_start and date_end:
-        query_count_report = query_count_report.filter(and_(ReportProfit.created_at >= date_start, ReportProfit.created_at <= date_end))
+        query_count_report = query_count_report.filter(
+            and_(ReportProfit.created_at >= date_start, ReportProfit.created_at <= date_end))
     if sort_by_date is not None:
         if sort_by_date:
             query_count_report = query_count_report.order_by(asc(ReportProfit.created_at))
@@ -175,6 +175,6 @@ async def get_report_profit(
             category=object_data.category
         ),
         reports=[ReportProfitOut(created_at=rep.created_at, revenue=rep.revenue, cost_price=rep.cost_price,
-                           number_of_checks=rep.number_of_checks) for rep in
+                                 number_of_checks=rep.number_of_checks) for rep in
                  reports_profit] if reports_profit else None
     )

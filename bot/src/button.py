@@ -22,7 +22,6 @@ def get_main_button(is_auth: bool, tg_id: int | None) -> types.ReplyKeyboardMark
                 [types.KeyboardButton(text="Редактировать свои данные")],
                 [types.KeyboardButton(text="Посмотреть свои данные")]
             ]
-
         button = types.ReplyKeyboardMarkup(
             keyboard=bt,
             resize_keyboard=True,
@@ -46,6 +45,7 @@ def get_time_control_button(tg_id: int) -> types.ReplyKeyboardMarkup:
             [types.KeyboardButton(text="Поставить отметку о конце работы")],
             [types.KeyboardButton(text="Посмотреть свои отчеты за период")],
         ]
+
     button = types.ReplyKeyboardMarkup(
         keyboard=bt,
         resize_keyboard=True,
@@ -91,19 +91,17 @@ def format_to_object_report() -> types.ReplyKeyboardMarkup:
 def get_update_user_for_admin_button(tg_id: int, users: list) -> types.ReplyKeyboardMarkup:
     if check_is_admin(tg_id):
         MAX_BUTTONS_IN_ROW = 3
-        buttons = []
+        bt = []
         row = []
 
         for index, user in enumerate(users, start=1):
             row.append(types.KeyboardButton(text=f"{index}. {user}"))
             if len(row) == MAX_BUTTONS_IN_ROW or index == len(users):
-                buttons.append(row)
+                bt.append(row)
                 row = []
 
-        buttons.append([types.KeyboardButton(text="Отмена")])
-
         keyboard = types.ReplyKeyboardMarkup(
-            keyboard=buttons,
+            keyboard=bt,
             resize_keyboard=True,
             input_field_placeholder="Выберите пользователя или нажмите 'Отмена'"
         )
@@ -114,22 +112,21 @@ def get_update_user_for_admin_button(tg_id: int, users: list) -> types.ReplyKeyb
 
 def get_object_button(object_list: list) -> types.ReplyKeyboardMarkup:
     MAX_BUTTONS_IN_ROW = 2
-    buttons = []
+    bt = []
     row = []
 
     for index, obj in enumerate(object_list, start=1):
         row.append(types.KeyboardButton(text=f"{index}. {obj}"))
         if len(row) == MAX_BUTTONS_IN_ROW or index == len(object_list):
-            buttons.append(row)
+            bt.append(row)
             row = []
 
-    buttons.append([types.KeyboardButton(text="Отмена")])
-
     keyboard = types.ReplyKeyboardMarkup(
-        keyboard=buttons,
+        keyboard=bt,
         resize_keyboard=True,
         input_field_placeholder="Выберите объект или нажмите 'Отмена'"
     )
+
     return keyboard
 
 
